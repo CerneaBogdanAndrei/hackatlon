@@ -3,246 +3,136 @@ import {
     View,
     Text,
     FlatList,
-    Image,
     Pressable,
+    Image,
     ActivityIndicator,
+    StyleSheet,
 } from "react-native";
-import MapView, { Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
-import rawLocations from "../../root/src/data/locations.json";
-import { supabase } from "../lib/supabase";
+import { useNavigation } from "@react-navigation/native";
+
+import rawLocations from "../data/locations.json";
 
 type RawLocation = {
     name: string;
     address: string;
     coordinates: { lat: number; long: number };
-    image_url: string;
-    short_description: string;
-    rating: number;
+    image_url?: string;
+    short_description?: string;
+    rating?: number;
 };
 
 type Location = {
-    id?: string;
+    id: number;
     name: string;
     address: string;
     latitude: number;
     longitude: number;
     image_url?: string | null;
     short_description?: string | null;
-    rating: number;
-    city?: string | null;
+    rating?: number | null;
 };
 
-function getLocalLocations(): Location[] {
-    return (rawLocations as RawLocation[]).map((l) => ({
-        name: l.name,
-        address: l.address,
-        latitude: l.coordinates.lat,
-        longitude: l.coordinates.long,
-        image_url: l.image_url,
-        short_description: l.short_description,
-        rating: l.rating,
-        city: l.address.split(",").slice(-1)[0]?.trim() || null,
-    }));
-}
-
 export default function ExploreScreen() {
+    const navigation = useNavigation<any>();
     const [locations, setLocations] = useState<Location[]>([]);
-    const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
-    const [source, setSource] = useState<"supabase" | "local">("local");
 
     useEffect(() => {
-        (async () => {
-            setLoading(true);
+        const normalized: Location[] = (rawLocations as RawLocation[]).map((l, i) => ({
+            id: i + 1,
+            name: l.name,
+            address: l.address,
+            latitude: l.coordinates.lat,
+            longitude: l.coordinates.long,
+            image_url: l.image_url ?? null,
+            short_description: l.short_description ?? null,
+            rating: l.rating ?? null,
+        }));
 
-            // 1) locations hybrid
-            try {
-                const { data, error } = await supabase
-                    .from("locations")
-                    .select("*")
-                    .order("rating", { ascending: false });
-
-                if (error) throw error;
-
-                if (data && data.length > 0) {
-                    setLocations(data as Location[]);
-                    setSource("supabase");
-                } else {
-                    setLocations(getLocalLocations());
-                    setSource("local");
-                }
-            } catch {
-                setLocations(getLocalLocations());
-                setSource("local");
-            }
-
-            // 2) favorites
-            try {
-                const user = (await supabase.auth.getUser()).data.user;
-                if (user) {
-                    const { data, error } = await supabase
-                        .from("favorites")
-                        .select("location_id")
-                        .eq("user_id", user.id);
-
-                    if (!error && data) {
-                        setFavoriteIds(data.map((x) => x.location_id as string));
-                    }
-                }
-            } catch {
-                setFavoriteIds([]);
-            }
-
-            setLoading(false);
-        })();
+        setLocations(normalized);
+        setLoading(false);
     }, []);
 
-    async function toggleFavorite(locationId: string) {
-        const isFav = favoriteIds.includes(locationId);
-
-        // optimistic update
-        setFavoriteIds((prev) =>
-            isFav ? prev.filter((id) => id !== locationId) : [...prev, locationId]
-        );
-
-        try {
-            const user = (await supabase.auth.getUser()).data.user;
-            if (!user) return;
-
-            if (isFav) {
-                const { error } = await supabase
-                    .from("favorites")
-                    .delete()
-                    .eq("user_id", user.id)
-                    .eq("location_id", locationId);
-                if (error) throw error;
-            } else {
-                const { error } = await supabase
-                    .from("favorites")
-                    .insert({ user_id: user.id, location_id: locationId });
-                if (error) throw error;
-            }
-        } catch {
-            // rollback dacă a picat request-ul
-            setFavoriteIds((prev) =>
-                isFav ? [...prev, locationId] : prev.filter((id) => id !== locationId)
-            );
-        }
+    function openDetails(loc: Location) {
+        navigation.navigate("details", { location: loc });
     }
-
-    const first = locations[0];
 
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+            <View style={styles.center}>
                 <ActivityIndicator size="large" />
+                <Text style={{ marginTop: 8 }}>loading...</Text>
             </View>
         );
     }
 
     return (
-        <View style={{ flex: 1 }}>
-            {/* header */}
-            <View style={{ padding: 12 }}>
-                <Text style={{ fontSize: 22, fontWeight: "700" }}>Explore</Text>
-                <Text style={{ opacity: 0.6 }}>
-                    source: {source} • {locations.length} places
-                </Text>
-            </View>
+        <View style={{ flex: 1, padding: 12 }}>
+            <Text style={{ fontSize: 22, fontWeight: "800", marginBottom: 8 }}>
+                explore
+            </Text>
 
-            {/* map */}
-            {first && (
-                <MapView
-                    style={{ height: 260, width: "100%" }}
-                    initialRegion={{
-                        latitude: first.latitude,
-                        longitude: first.longitude,
-                        latitudeDelta: 0.18,
-                        longitudeDelta: 0.18,
-                    }}
-                >
-                    {locations.map((l) => (
-                        <Marker
-                            key={l.id ?? l.name}
-                            coordinate={{ latitude: l.latitude, longitude: l.longitude }}
-                            title={l.name}
-                            description={l.address}
-                        />
-                    ))}
-                </MapView>
-            )}
-
-            {/* list */}
             <FlatList
                 data={locations}
-                keyExtractor={(i) => i.id ?? i.name}
-                renderItem={({ item }) => {
-                    const canFav = !!item.id; // doar supabase are id stabil
-                    const isFav = canFav && favoriteIds.includes(item.id!);
+                keyExtractor={(item) => String(item.id)}
+                renderItem={({ item }) => (
+                    <Pressable onPress={() => openDetails(item)} style={styles.card}>
+                        {!!item.image_url && (
+                            <Image source={{ uri: item.image_url }} style={styles.cardImg} />
+                        )}
 
-                    return (
-                        <View
-                            style={{
-                                margin: 12,
-                                borderRadius: 16,
-                                overflow: "hidden",
-                                backgroundColor: "#111",
-                            }}
-                        >
-                            {!!item.image_url && (
-                                <Image
-                                    source={{ uri: item.image_url }}
-                                    style={{ height: 160, width: "100%" }}
-                                    resizeMode="cover"
-                                />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.cardTitle}>{item.name}</Text>
+                            <Text style={styles.cardAddr}>{item.address}</Text>
+
+                            {!!item.short_description && (
+                                <Text style={styles.cardDesc} numberOfLines={2}>
+                                    {item.short_description}
+                                </Text>
                             )}
 
-                            <View style={{ padding: 12, gap: 6 }}>
-                                <View
-                                    style={{
-                                        flexDirection: "row",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <Text
-                                        style={{
-                                            color: "white",
-                                            fontSize: 18,
-                                            fontWeight: "700",
-                                            flex: 1,
-                                            paddingRight: 8,
-                                        }}
-                                    >
-                                        {item.name}
+                            {item.rating != null && (
+                                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6 }}>
+                                    <Ionicons name="star" size={14} color="#111" />
+                                    <Text style={{ marginLeft: 4, fontWeight: "700" }}>
+                                        {item.rating}
                                     </Text>
-
-                                    {canFav && (
-                                        <Pressable onPress={() => toggleFavorite(item.id!)}>
-                                            <Ionicons
-                                                name={isFav ? "heart" : "heart-outline"}
-                                                size={22}
-                                                color={isFav ? "tomato" : "white"}
-                                            />
-                                        </Pressable>
-                                    )}
                                 </View>
-
-                                <Text style={{ color: "#bbb" }}>{item.address}</Text>
-
-                                {!!item.short_description && (
-                                    <Text style={{ color: "#ddd" }}>
-                                        {item.short_description}
-                                    </Text>
-                                )}
-
-                                <Text style={{ color: "white" }}>⭐ {item.rating}</Text>
-                            </View>
+                            )}
                         </View>
-                    );
-                }}
+                    </Pressable>
+                )}
+                ListEmptyComponent={
+                    <Text style={{ textAlign: "center", marginTop: 20 }}>
+                        no locations found
+                    </Text>
+                }
             />
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    center: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+    card: {
+        flexDirection: "row",
+        gap: 10,
+        backgroundColor: "white",
+        borderRadius: 14,
+        padding: 10,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: "#eee",
+    },
+    cardImg: {
+        width: 90,
+        height: 90,
+        borderRadius: 10,
+        backgroundColor: "#f2f2f2",
+    },
+    cardTitle: { fontSize: 16, fontWeight: "800" },
+    cardAddr: { fontSize: 12, opacity: 0.7, marginTop: 2 },
+    cardDesc: { fontSize: 13, marginTop: 6, opacity: 0.9 },
+});

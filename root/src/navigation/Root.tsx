@@ -1,40 +1,30 @@
-import { useEffect, useState } from "react";
-import { View, ActivityIndicator } from "react-native";
-import { supabase } from "../lib/supabase";
-import AuthStack from "./AuthStack";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AppTabs from "./AppTabs";
+import DetailsScreen from "../screens/DetailsScreen";
+
+export type RootStackParamList = {
+    tabs: undefined;
+    details: { location: any };
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function Root() {
-    const [session, setSession] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    return (
+        <Stack.Navigator>
+            {/* Tabs (map / explore / ai / profile) */}
+            <Stack.Screen
+                name="tabs"
+                component={AppTabs}
+                options={{ headerShown: false }}
+            />
 
-    useEffect(() => {
-        let mounted = true;
-
-        supabase.auth.getSession().then(({ data }) => {
-            if (!mounted) return;
-            setSession(data.session);
-            setLoading(false);
-        });
-
-        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-            setLoading(false);
-        });
-
-        return () => {
-            mounted = false;
-            listener.subscription.unsubscribe();
-        };
-    }, []);
-
-    if (loading) {
-        return (
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                <ActivityIndicator size="large" />
-            </View>
-        );
-    }
-
-    return session ? <AppTabs /> : <AuthStack />;
+            {/* Details */}
+            <Stack.Screen
+                name="details"
+                component={DetailsScreen}
+                options={{ title: "details" }}
+            />
+        </Stack.Navigator>
+    );
 }

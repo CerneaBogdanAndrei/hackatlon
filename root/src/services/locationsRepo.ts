@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabase";
-import { getLocalLocations } from "./localLocations";
+import { getLocations } from "../services/locationsRepo";
+
 
 export type Location = {
     id?: string;
