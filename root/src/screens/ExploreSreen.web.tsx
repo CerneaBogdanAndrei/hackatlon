@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { FlatList, View, Text, Image, ActivityIndicator } from "react-native";
-import rawLocations from "../data/locations.json";
+import rawLocations from "../../root/src/data/locations.json";
 import { supabase } from "../lib/supabase";
 
 type RawLocation = {

@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
-import rawLocations from "../data/locations.json";
+import rawLocations from "../../root/src/data/locations.json";
 import { supabase } from "../lib/supabase";
 
 type RawLocation = {
