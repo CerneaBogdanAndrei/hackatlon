@@ -1,0 +1,34 @@
+# --- env / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- node / js ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- expo / react native ---
+.expo/
+.expo-shared/
+dist/
+web-build/
+android/
+ios/
+*.apk
+*.aab
+
+# --- caches ---
+.cache/
+.tmp/
+tmp/
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+
+# --- JetBrains / WebStorm ---
+.idea/
+*.iml
