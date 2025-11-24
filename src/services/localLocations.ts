@@ -1,4 +1,5 @@
-import raw from "../data/locations.json";
+import rawLocations from "../data/locations.json";
+import type { Location } from "./locationsRepo";
 
 type RawLocation = {
     name: string;
@@ -9,19 +10,8 @@ type RawLocation = {
     rating: number;
 };
 
-export type Location = {
-    id?: string;
-    name: string;
-    address: string;
-    latitude: number;
-    longitude: number;
-    image_url: string;
-    short_description: string;
-    rating: number;
-};
-
 export function getLocalLocations(): Location[] {
-    return (raw as RawLocation[]).map((l) => ({
+    return (rawLocations as RawLocation[]).map((l) => ({
         name: l.name,
         address: l.address,
         latitude: l.coordinates.lat,
@@ -29,5 +19,6 @@ export function getLocalLocations(): Location[] {
         image_url: l.image_url,
         short_description: l.short_description,
         rating: l.rating,
+        city: l.address.split(",").slice(-1)[0]?.trim() || null,
     }));
 }

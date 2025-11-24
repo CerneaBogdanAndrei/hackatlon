@@ -1,36 +1,7 @@
 import { useEffect, useState } from "react";
 import { View, ActivityIndicator } from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import rawLocations from "../data/locations.json";
-import { supabase } from "../lib/supabase";
-
-type RawLocation = {
-    name: string;
-    address: string;
-    coordinates: { lat: number; long: number };
-    image_url: string;
-    short_description: string;
-    rating: number;
-};
-
-type Location = {
-    id?: string;
-    name: string;
-    address: string;
-    latitude: number;
-    longitude: number;
-    rating: number;
-};
-
-function getLocalLocations(): Location[] {
-    return (rawLocations as RawLocation[]).map((l) => ({
-        name: l.name,
-        address: l.address,
-        latitude: l.coordinates.lat,
-        longitude: l.coordinates.long,
-        rating: l.rating,
-    }));
-}
+import { fetchLocationsHybrid, Location } from "../services/locationsRepo";
 
 export default function MapScreen() {
     const [locations, setLocations] = useState<Location[]>([]);
@@ -39,12 +10,8 @@ export default function MapScreen() {
     useEffect(() => {
         (async () => {
             setLoading(true);
-            try {
-                const { data } = await supabase.from("locations").select("*");
-                setLocations((data as Location[]) ?? getLocalLocations());
-            } catch {
-                setLocations(getLocalLocations());
-            }
+            const res = await fetchLocationsHybrid();
+            setLocations(res.locations);
             setLoading(false);
         })();
     }, []);
