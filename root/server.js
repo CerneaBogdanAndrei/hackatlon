@@ -1,4 +1,5 @@
-// index.js - server Node/Express cu "AI local" peste locations.json
+// server.js - server Node/Express cu "AI local" peste src/data/locations.json
+
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
@@ -8,9 +9,11 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public"))); // servește frontend-ul din /public
 
-// Citim baza de date locală cu locații
+// (opțional) dacă vei avea un frontend separat în /public
+app.use(express.static(path.join(__dirname, "public")));
+
+// Citim baza de date locală cu locații (folosește src/data/locations.json din proiectul tău)
 const locationsPath = path.join(__dirname, "src", "data", "locations.json");
 const locations = JSON.parse(fs.readFileSync(locationsPath, "utf8"));
 
@@ -136,7 +139,7 @@ function findMatchingLocations(message) {
     if (tags.length > 0) {
         filtered = filtered.filter((loc) => {
             const name = normalize(loc.name);
-            const desc = normalize(loc.short_description);
+            const desc = normalize(loc.short_description || "");
 
             return tags.every((tag) => {
                 switch (tag) {
@@ -207,59 +210,59 @@ function buildLongDescription(loc, message) {
 
     const introTemplates = [
         (l) =>
-            `„${l.name}” este unul dintre cele mai apreciate locuri din ${city}, aflat la adresa ${l.address}.`,
+            `"${l.name}" este unul dintre cele mai apreciate locuri din ${city}, aflat la adresa ${l.address}.`,
         (l) =>
-            `Daca ajungi prin ${city}, merita neaparat sa incerci „${l.name}”, situat pe ${l.address}.`,
+            `Dacă ajungi prin ${city}, merită neapărat să încerci "${l.name}", situat pe ${l.address}.`,
         (l) =>
-            `„${l.name}”, pe ${l.address} (${city}), este o optiune foarte populara printre localnici si studenti.`,
+            `"${l.name}", pe ${l.address} (${city}), este o opțiune foarte populară printre localnici și studenți.`,
     ];
 
     const atmosphereTemplates = [
         (l) =>
             l.rating >= 4.7
-                ? `Atmosfera este calda si prietenoasa, iar recenziile il plaseaza constant peste ${l.rating.toFixed(
+                ? `Atmosfera este caldă și prietenoasă, iar recenziile îl plasează constant peste ${l.rating.toFixed(
                     1
                 )} din 5 stele.`
-                : `Este un loc echilibrat, cu recenzii bune si un rating general de aproximativ ${l.rating.toFixed(
+                : `Este un loc echilibrat, cu recenzii bune și un rating general de aproximativ ${l.rating.toFixed(
                     1
                 )} din 5.`,
         (l) =>
-            `Multi clienti mentioneaza ca se simt foarte relaxati aici, iar ratingul de ${l.rating.toFixed(
+            `Mulți clienți menționează că se simt foarte relaxați aici, iar ratingul de ${l.rating.toFixed(
                 1
-            )} din 5 confirma experienta placuta.`,
+            )} din 5 confirmă experiența plăcută.`,
     ];
 
     const usageTemplates = [];
 
     if (msg.includes("student")) {
         usageTemplates.push(
-            "Este potrivit in special pentru studenti, fie ca vii pentru un pranz rapid intre cursuri, fie pentru o seara mai relaxata cu colegii."
+            "Este potrivit în special pentru studenți, fie că vii pentru un prânz rapid între cursuri, fie pentru o seară mai relaxată cu colegii."
         );
-    } else if (msg.includes("romantic") || msg.includes("intalnire")) {
+    } else if (msg.includes("romantic") || msg.includes("intalnire") || msg.includes("întâlnire")) {
         usageTemplates.push(
-            "Ambianta il recomanda pentru intalniri romantice: lumina discreta, muzica placuta si posibilitatea de a sta la povesti in liniste."
+            "Ambianța îl recomandă pentru întâlniri romantice: lumină discretă, muzică plăcută și posibilitatea de a sta la povești în liniște."
         );
     } else if (msg.includes("cafea") || msg.includes("cappuccino")) {
         usageTemplates.push(
-            "Daca iti place cafeaua buna, aici gasesti espresso corect facut, dar si optiuni precum cappuccino sau latte pentru un moment de relaxare."
+            "Dacă îți place cafeaua bună, aici găsești espresso corect făcut, dar și opțiuni precum cappuccino sau latte pentru un moment de relaxare."
         );
     } else if (msg.includes("vegan")) {
         usageTemplates.push(
-            "Este o alegere foarte buna pentru cei care prefera optiuni vegane sau mancare mai usoara, bazata pe ingrediente proaspete."
+            "Este o alegere foarte bună pentru cei care preferă opțiuni vegane sau mâncare mai ușoară, bazată pe ingrediente proaspete."
         );
     } else {
         usageTemplates.push(
-            "Este genul de loc unde poti veni atat cu prietenii, cat si cu familia, pentru a manca bine si a petrece timp intr-un cadru placut."
+            "Este genul de loc unde poți veni atât cu prietenii, cât și cu familia, pentru a mânca bine și a petrece timp într-un cadru plăcut."
         );
     }
 
     const extraTemplates = [
-        "Personalul este in general apreciat ca fiind prietenos si prompt, ceea ce contribuie mult la experienta generala.",
-        "In functie de ora si de zi, poate fi destul de aglomerat, asa ca merita sa iei in calcul o rezervare sau sa ajungi ceva mai devreme.",
-        "Daca iti place sa faci poze pentru Instagram, decorul si platingul mancarurilor se preteaza foarte bine pentru asta.",
+        "Personalul este apreciat ca fiind prietenos și prompt, ceea ce contribuie mult la experiența generală.",
+        "În funcție de oră și de zi, poate fi destul de aglomerat, așa că merită să iei în calcul o rezervare sau să ajungi ceva mai devreme.",
+        "Dacă îți place să faci poze pentru Instagram, decorul și platingul mâncărurilor se pretează foarte bine pentru asta.",
     ];
 
-    const baseDesc = loc.short_description;
+    const baseDesc = loc.short_description || "";
 
     function pickRandom(arr) {
         return arr[Math.floor(Math.random() * arr.length)];
@@ -267,7 +270,7 @@ function buildLongDescription(loc, message) {
 
     const paragraphs = [];
     paragraphs.push(pickRandom(introTemplates)(loc));
-    paragraphs.push(baseDesc);
+    if (baseDesc) paragraphs.push(baseDesc);
     paragraphs.push(pickRandom(atmosphereTemplates)(loc));
     paragraphs.push(usageTemplates[0]);
     paragraphs.push(pickRandom(extraTemplates));
@@ -276,14 +279,16 @@ function buildLongDescription(loc, message) {
 }
 
 // ===== Endpointul de “chat” local =====
-
+app.get("/", (req, res) => {
+    res.send("Server local OK. Folosește POST /api/chat");
+});
 app.post("/api/chat", (req, res) => {
     const { message } = req.body;
 
     if (!message || !message.trim()) {
         return res.json({
             reply:
-                "Poti sa-mi scrii ce fel de loc cauti. De exemplu: „O cafenea linistita in Cluj pentru invatat” sau „Un local cu peste la mare”.",
+                "Poți să-mi scrii ce fel de loc cauți. De exemplu: „O cafenea liniștită în Cluj pentru învățat” sau „Un local cu pește la mare”.",
         });
     }
 
@@ -292,7 +297,7 @@ app.post("/api/chat", (req, res) => {
     if (matches.length === 0) {
         return res.json({
             reply:
-                "Nu am reusit sa gasesc un loc potrivit in lista mea pentru ce ai descris. Incearca sa mentionezi si orasul sau tipul de local (cafenea, pizza, vegan, peste, etc.).",
+                "Nu am reușit să găsesc un loc potrivit în lista mea pentru ce ai descris. Încearcă să menționezi și orașul sau tipul de local (cafenea, pizza, vegan, pește etc.).",
         });
     }
 
@@ -302,7 +307,7 @@ app.post("/api/chat", (req, res) => {
         reply += buildLongDescription(matches[0], message);
     } else {
         reply +=
-            "Am gasit mai multe variante care s-ar potrivi cu ce ai intrebat. Iata cateva recomandari:\n\n";
+            "Am găsit mai multe variante care s-ar potrivi cu ce ai întrebat. Iată câteva recomandări:\n\n";
         matches.forEach((loc, idx) => {
             reply += `${idx + 1}. ${buildLongDescription(loc, message)}\n\n`;
         });
@@ -312,7 +317,7 @@ app.post("/api/chat", (req, res) => {
 });
 
 // ===== Pornim serverul =====
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Server local (fara OpenAI) pornit pe http://localhost:${PORT}`);
 });

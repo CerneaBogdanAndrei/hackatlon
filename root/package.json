@@ -2,7 +2,7 @@
   "name": "untitled",
   "version": "1.0.0",
   "private": true,
-  "main": "root/index.js",
+  "main": "index.js",
   "scripts": {
     "start": "expo start --go",
     "android": "expo start --android",
