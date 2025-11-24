@@ -1,21 +1,56 @@
-import React from "react";
 import { View, Text, Image, Pressable, StyleSheet } from "react-native";
-import type { Location } from "../services/localLocations";
+import { Ionicons } from "@expo/vector-icons";
+
+type Props = {
+    location: {
+        id: number;
+        name: string;
+        address: string;
+        image_url?: string | null;
+        short_description?: string | null;
+        rating?: number | null;
+    };
+    liked?: boolean;
+    onPress?: () => void;
+    onToggleLike?: () => void;
+};
 
 export default function LocationCard({
-                                         item,
+                                         location,
+                                         liked = false,
                                          onPress,
-                                     }: {
-    item: Location;
-    onPress: () => void;
-}) {
+                                         onToggleLike,
+                                     }: Props) {
     return (
         <Pressable onPress={onPress} style={styles.card}>
-            <Image source={{ uri: item.image_url }} style={styles.img} />
-            <View style={styles.body}>
-                <Text style={styles.title}>{item.name}</Text>
-                <Text style={styles.addr}>{item.address}</Text>
-                <Text style={styles.rating}>⭐ {item.rating}</Text>
+            {!!location.image_url && (
+                <Image source={{ uri: location.image_url }} style={styles.cardImg} />
+            )}
+
+            <View style={{ flex: 1 }}>
+                <View style={styles.rowTop}>
+                    <Text style={styles.cardTitle}>{location.name}</Text>
+
+                    <Pressable onPress={onToggleLike} hitSlop={10}>
+                        <Ionicons
+                            name={liked ? "heart" : "heart-outline"}
+                            size={22}
+                            color={liked ? "#e11d48" : "#111"}
+                        />
+                    </Pressable>
+                </View>
+
+                <Text style={styles.cardAddr}>{location.address}</Text>
+
+                {!!location.short_description && (
+                    <Text style={styles.cardDesc} numberOfLines={2}>
+                        {location.short_description}
+                    </Text>
+                )}
+
+                {location.rating != null && (
+                    <Text style={styles.cardRating}>⭐ {location.rating}</Text>
+                )}
             </View>
         </Pressable>
     );
@@ -23,15 +58,29 @@ export default function LocationCard({
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: "#111",
-        borderRadius: 16,
-        marginHorizontal: 12,
-        marginVertical: 8,
-        overflow: "hidden",
+        flexDirection: "row",
+        gap: 10,
+        backgroundColor: "white",
+        borderRadius: 14,
+        padding: 10,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: "#eee",
     },
-    img: { height: 170, width: "100%" },
-    body: { padding: 12 },
-    title: { color: "white", fontSize: 18, fontWeight: "800" },
-    addr: { color: "#bbb", marginTop: 4 },
-    rating: { color: "white", marginTop: 6, fontWeight: "700" },
+    cardImg: {
+        width: 90,
+        height: 90,
+        borderRadius: 10,
+        backgroundColor: "#f2f2f2",
+    },
+    rowTop: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+    },
+    cardTitle: { fontSize: 16, fontWeight: "800", flex: 1 },
+    cardAddr: { fontSize: 12, opacity: 0.7, marginTop: 2 },
+    cardDesc: { fontSize: 13, marginTop: 6, opacity: 0.9 },
+    cardRating: { marginTop: 6, fontWeight: "700" },
 });

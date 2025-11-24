@@ -1,4 +1,4 @@
-const locationsRaw = require("../root/src/data/locations.json");
+const locationsRaw = require("../src/data/locations.json");
 
 console.log("locations count:", locationsRaw.length);
 console.log("first raw location:", locationsRaw[0]);

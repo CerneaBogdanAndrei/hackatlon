@@ -1,6 +1,6 @@
 ﻿require("dotenv").config();
 const { createClient } = require("@supabase/supabase-js");
-const locations = require("../root/src/data/locations.json");
+const locations = require("../src/data/locations.json");
 
 const supabase = createClient(
   process.env.supabase_url,
