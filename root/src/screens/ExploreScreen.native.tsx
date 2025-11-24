@@ -3,17 +3,26 @@ import {
     View,
     Text,
     FlatList,
+    Pressable,
+    Image,
     ActivityIndicator,
     StyleSheet,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
-import { getLocations } from "../services/locationsRepo";
-import { getLikedIds, toggleLike } from "../services/likesRepo";
-import LocationCard from "../components/LocationCard";
+import rawLocations from "../data/locations.json";
 
-// Tipul folosit în app (identic cu MapScreen)
-export type Location = {
+type RawLocation = {
+    name: string;
+    address: string;
+    coordinates: { lat: number; long: number };
+    image_url?: string;
+    short_description?: string;
+    rating?: number;
+};
+
+type Location = {
     id: number;
     name: string;
     address: string;
@@ -26,54 +35,27 @@ export type Location = {
 
 export default function ExploreScreen() {
     const navigation = useNavigation<any>();
-
     const [locations, setLocations] = useState<Location[]>([]);
-    const [likedIds, setLikedIds] = useState<number[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // încarcă locațiile
     useEffect(() => {
-        let mounted = true;
+        const normalized: Location[] = (rawLocations as RawLocation[]).map((l, i) => ({
+            id: i + 1,
+            name: l.name,
+            address: l.address,
+            latitude: l.coordinates.lat,
+            longitude: l.coordinates.long,
+            image_url: l.image_url ?? null,
+            short_description: l.short_description ?? null,
+            rating: l.rating ?? null,
+        }));
 
-        async function loadLocations() {
-            try {
-                setLoading(true);
-                const data = await getLocations();
-                if (mounted) setLocations(data);
-            } catch (e) {
-                console.log("Explore getLocations error:", e);
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        }
-
-        loadLocations();
-
-        return () => {
-            mounted = false;
-        };
-    }, []);
-
-    // încarcă like-urile locale
-    useEffect(() => {
-        (async () => {
-            const ids = await getLikedIds();
-            setLikedIds(ids);
-        })();
+        setLocations(normalized);
+        setLoading(false);
     }, []);
 
     function openDetails(loc: Location) {
         navigation.navigate("details", { location: loc });
-    }
-
-    async function onToggleLike(loc: Location) {
-        const newLiked = await toggleLike(loc);
-
-        setLikedIds((prev) =>
-            newLiked
-                ? Array.from(new Set([...prev, loc.id]))
-                : prev.filter((id) => id !== loc.id)
-        );
     }
 
     if (loading) {
@@ -87,22 +69,39 @@ export default function ExploreScreen() {
 
     return (
         <View style={{ flex: 1, padding: 12 }}>
-            <Text style={styles.title}>explore</Text>
-            <Text style={styles.subtitle}>
-                apasă pe inimioară ca să salvezi locația la favorite
+            <Text style={{ fontSize: 22, fontWeight: "800", marginBottom: 8 }}>
+                explore
             </Text>
 
             <FlatList
                 data={locations}
                 keyExtractor={(item) => String(item.id)}
-                contentContainerStyle={{ paddingBottom: 40 }}
                 renderItem={({ item }) => (
-                    <LocationCard
-                        location={item}
-                        liked={likedIds.includes(item.id)}
-                        onPress={() => openDetails(item)}
-                        onToggleLike={() => onToggleLike(item)}
-                    />
+                    <Pressable onPress={() => openDetails(item)} style={styles.card}>
+                        {!!item.image_url && (
+                            <Image source={{ uri: item.image_url }} style={styles.cardImg} />
+                        )}
+
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.cardTitle}>{item.name}</Text>
+                            <Text style={styles.cardAddr}>{item.address}</Text>
+
+                            {!!item.short_description && (
+                                <Text style={styles.cardDesc} numberOfLines={2}>
+                                    {item.short_description}
+                                </Text>
+                            )}
+
+                            {item.rating != null && (
+                                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6 }}>
+                                    <Ionicons name="star" size={14} color="#111" />
+                                    <Text style={{ marginLeft: 4, fontWeight: "700" }}>
+                                        {item.rating}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </Pressable>
                 )}
                 ListEmptyComponent={
                     <Text style={{ textAlign: "center", marginTop: 20 }}>
@@ -116,6 +115,24 @@ export default function ExploreScreen() {
 
 const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    title: { fontSize: 22, fontWeight: "800", marginBottom: 4 },
-    subtitle: { fontSize: 13, opacity: 0.7, marginBottom: 10 },
+
+    card: {
+        flexDirection: "row",
+        gap: 10,
+        backgroundColor: "white",
+        borderRadius: 14,
+        padding: 10,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: "#eee",
+    },
+    cardImg: {
+        width: 90,
+        height: 90,
+        borderRadius: 10,
+        backgroundColor: "#f2f2f2",
+    },
+    cardTitle: { fontSize: 16, fontWeight: "800" },
+    cardAddr: { fontSize: 12, opacity: 0.7, marginTop: 2 },
+    cardDesc: { fontSize: 13, marginTop: 6, opacity: 0.9 },
 });
