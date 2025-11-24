@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { supabase } from "../lib/supabase";
-import AuthScreen from "../screens/AuthScreen";
-import Tabs from "./Tabs";
+import AuthStack from "./AuthStack";
+import AppTabs from "./AppTabs";
 
 export default function Root() {
     const [session, setSession] = useState<any>(null);
@@ -36,5 +36,5 @@ export default function Root() {
         );
     }
 
-    return session ? <Tabs /> : <AuthScreen />;
+    return session ? <AppTabs /> : <AuthStack />;
 }
