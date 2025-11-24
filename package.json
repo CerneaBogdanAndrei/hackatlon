@@ -1,16 +1,14 @@
 {
-  "name": "hackathon-locations-chat",
+  "name": "untitled",
   "version": "1.0.0",
-  "description": "Chat local pentru recomandari de locatii",
+  "description": "",
   "main": "index.js",
-  "private": true,
   "scripts": {
-    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "private": true,
   "dependencies": {
     "@supabase/supabase-js": "^2.84.0",
-    "cors": "^2.8.5",
-    "express": "^4.19.0"
+    "dotenv": "^17.2.3"
   }
 }
