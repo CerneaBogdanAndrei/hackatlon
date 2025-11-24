@@ -3,8 +3,9 @@ import { Ionicons } from "@expo/vector-icons";
 
 import MapScreen from "../screens/MapScreen";
 import ExploreScreen from "../screens/ExploreScreen";
-import ProfileScreen from "../screens/ProfileScreen";
+import FavoritesScreen from "../screens/FavoritesScreen";
 import ChatScreen from "../screens/ChatScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -19,6 +20,7 @@ export default function AppTabs() {
 
                     if (route.name === "map") icon = focused ? "map" : "map-outline";
                     if (route.name === "explore") icon = focused ? "compass" : "compass-outline";
+                    if (route.name === "favorites") icon = focused ? "heart" : "heart-outline";
                     if (route.name === "ai") icon = focused ? "sparkles" : "sparkles-outline";
                     if (route.name === "profile") icon = focused ? "person" : "person-outline";
 
@@ -28,6 +30,7 @@ export default function AppTabs() {
         >
             <Tab.Screen name="map" component={MapScreen} />
             <Tab.Screen name="explore" component={ExploreScreen} />
+            <Tab.Screen name="favorites" component={FavoritesScreen} />
             <Tab.Screen name="ai" component={ChatScreen} />
             <Tab.Screen name="profile" component={ProfileScreen} />
         </Tab.Navigator>
