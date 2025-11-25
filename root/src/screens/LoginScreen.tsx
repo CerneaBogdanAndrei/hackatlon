@@ -18,7 +18,7 @@ export default function LoginScreen() {
     const navigation = useNavigation<any>();
     const theme = useTheme();
 
-    const [email, setEmail] = useState("exemplu@email.com");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPass, setShowPass] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -44,7 +44,7 @@ export default function LoginScreen() {
                 return;
             }
 
-            // aici poți ajusta navigarea cum vrei
+
             navigation.navigate("tabs");
         } catch (e: any) {
             setError(e?.message ?? "A apărut o eroare neașteptată.");
