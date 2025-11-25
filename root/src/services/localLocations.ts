@@ -1,3 +1,4 @@
+// src/services/localLocations.ts
 import rawLocations from "../data/locations.json";
 import type { Location } from "./locationsRepo";
 
@@ -10,15 +11,16 @@ type RawLocation = {
     rating?: number;
 };
 
-const normalized: Location[] = (rawLocations as RawLocation[]).map((l, i) => ({
-    id: i + 1, // sau l.id dacă ai în json
-    name: l.name,
-    address: l.address,
-    latitude: l.coordinates.lat,
-    longitude: l.coordinates.long,
-    image_url: l.image_url ?? null,
-    short_description: l.short_description ?? null,
-    rating: l.rating ?? null,
-}));
-
-export const localLocations: Location[] = normalized;
+// JSON-ul nu are id, deci îl generăm din index.
+export const localLocations: Location[] = (rawLocations as RawLocation[]).map(
+    (l, idx) => ({
+        id: idx + 1, // ✅ unic, stabil
+        name: l.name,
+        address: l.address,
+        latitude: l.coordinates.lat,
+        longitude: l.coordinates.long,
+        image_url: l.image_url ?? null,
+        short_description: l.short_description ?? null,
+        rating: l.rating ?? null,
+    })
+);

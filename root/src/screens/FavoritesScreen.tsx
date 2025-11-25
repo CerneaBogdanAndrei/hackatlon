@@ -1,9 +1,14 @@
 import { useCallback, useState } from "react";
-import { View, Text, FlatList, ActivityIndicator, StyleSheet } from "react-native";
+import {
+    View,
+    Text,
+    FlatList,
+    ActivityIndicator,
+    StyleSheet,
+} from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
-import { getLocations, type Location } from "../services/locationsRepo";
-import { getLikedIds, toggleLike } from "../services/likesRepo";
+import { getFavorites, getLikedIds, toggleLike, type FavLocation } from "../services/likesRepo";
 import LocationCard from "../components/LocationCard";
 import { useTheme } from "../theme/useTheme";
 
@@ -12,50 +17,46 @@ export default function FavoritesScreen() {
     const theme = useTheme();
 
     const [loading, setLoading] = useState(true);
+    const [favorites, setFavorites] = useState<FavLocation[]>([]);
     const [likedIds, setLikedIds] = useState<number[]>([]);
-    const [favLocations, setFavLocations] = useState<Location[]>([]);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [allLocations, ids] = await Promise.all([
-                getLocations(),
-                getLikedIds(),
-            ]);
-
+            const favs = await getFavorites();
+            const ids = await getLikedIds();
+            setFavorites(favs);
             setLikedIds(ids);
-            setFavLocations(allLocations.filter((l) => ids.includes(l.id)));
         } catch (e) {
             console.log("Favorites load error:", e);
+            setFavorites([]);
             setLikedIds([]);
-            setFavLocations([]);
         } finally {
             setLoading(false);
         }
     }, []);
 
-    // Refacem lista de fiecare dată când intri în tab
     useFocusEffect(
         useCallback(() => {
             load();
         }, [load])
     );
 
-    function openDetails(loc: Location) {
+    function openDetails(loc: FavLocation) {
         navigation.navigate("details", { location: loc });
     }
 
-    async function onToggleLike(loc: Location) {
+    async function onToggleLike(loc: FavLocation) {
         const newLiked = await toggleLike(loc);
 
-        const nextIds = newLiked
-            ? Array.from(new Set([...likedIds, loc.id]))
-            : likedIds.filter((id) => id !== loc.id);
-
-        setLikedIds(nextIds);
-        setFavLocations((prev) =>
-            newLiked ? prev : prev.filter((x) => x.id !== loc.id)
-        );
+        if (!newLiked) {
+            setFavorites((prev) => prev.filter((x) => x.id !== loc.id));
+            setLikedIds((prev) => prev.filter((id) => id !== loc.id));
+        } else {
+            // rare case dacă dai like direct din favorites
+            setFavorites((prev) => [loc, ...prev]);
+            setLikedIds((prev) => Array.from(new Set([...prev, loc.id])));
+        }
     }
 
     if (loading) {
@@ -74,12 +75,9 @@ export default function FavoritesScreen() {
             <Text style={[styles.title, { color: theme.colors.text }]}>
                 favorites ❤️
             </Text>
-            <Text style={[styles.subtitle, { color: theme.colors.subtext }]}>
-                aici ai toate locațiile salvate cu inimioară
-            </Text>
 
             <FlatList
-                data={favLocations}
+                data={favorites}
                 keyExtractor={(item) => String(item.id)}
                 contentContainerStyle={{ paddingBottom: 40 }}
                 renderItem={({ item }) => (
@@ -91,7 +89,13 @@ export default function FavoritesScreen() {
                     />
                 )}
                 ListEmptyComponent={
-                    <Text style={{ textAlign: "center", marginTop: 30, color: theme.colors.subtext }}>
+                    <Text
+                        style={{
+                            textAlign: "center",
+                            marginTop: 30,
+                            color: theme.colors.subtext,
+                        }}
+                    >
                         nu ai favorite încă. apasă inimioara la o locație 😉
                     </Text>
                 }
@@ -102,6 +106,5 @@ export default function FavoritesScreen() {
 
 const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    title: { fontSize: 22, fontWeight: "800", marginBottom: 4 },
-    subtitle: { fontSize: 13, opacity: 0.8, marginBottom: 10 },
+    title: { fontSize: 22, fontWeight: "800", marginBottom: 8 },
 });

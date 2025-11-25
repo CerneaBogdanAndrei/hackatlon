@@ -14,11 +14,18 @@ export type Location = {
 
 const FORCE_LOCAL = false;
 
-export async function getLocations(): Promise<Location[]> {
-    if (FORCE_LOCAL) {
-        console.log("[locationsRepo] FORCE_LOCAL -> using local JSON");
-        return localLocations;
+function makeFallbackId(l: any, idx: number) {
+    // id stabil din name+address dacă nu vine din DB
+    const base = `${l.name ?? "loc"}|${l.address ?? "addr"}|${idx}`;
+    let hash = 0;
+    for (let i = 0; i < base.length; i++) {
+        hash = (hash * 31 + base.charCodeAt(i)) | 0;
     }
+    return Math.abs(hash);
+}
+
+export async function getLocations(): Promise<Location[]> {
+    if (FORCE_LOCAL) return localLocations;
 
     try {
         const { data, error } = await supabase
@@ -26,32 +33,40 @@ export async function getLocations(): Promise<Location[]> {
             .select("*")
             .order("rating", { ascending: false });
 
-        if (error) {
-            console.log("[locationsRepo] supabase error:", error.message);
-            console.log("[locationsRepo] fallback to local JSON");
+        if (error || !data || data.length === 0) {
             return localLocations;
         }
 
-        if (!data || data.length === 0) {
-            console.log("[locationsRepo] supabase empty -> fallback to local JSON");
-            return localLocations;
-        }
+        const mapped: Location[] = data.map((l: any, idx: number) => {
+            const numericId = Number(l.id);
 
-        const mapped: Location[] = data.map((l: any) => ({
-            id: l.id,
-            name: l.name,
-            address: l.address,
-            latitude: l.latitude,
-            longitude: l.longitude,
-            image_url: l.image_url ?? null,
-            short_description: l.short_description ?? null,
-            rating: l.rating ?? null,
-        }));
+            return {
+                id: Number.isFinite(numericId) ? numericId : makeFallbackId(l, idx), // ✅ unic
+                name: l.name,
+                address: l.address,
+                latitude: l.latitude,
+                longitude: l.longitude,
+                image_url: l.image_url ?? null,
+                short_description: l.short_description ?? null,
+                rating: l.rating ?? null,
+            };
+        });
 
-        console.log("[locationsRepo] using supabase, count =", mapped.length);
-        return mapped;
+        // ✅ dacă Supabase dă id-uri duplicate, le reparăm:
+        const seen = new Set<number>();
+        const fixed = mapped.map((l, idx) => {
+            if (!seen.has(l.id)) {
+                seen.add(l.id);
+                return l;
+            }
+            const newId = makeFallbackId(l, idx);
+            seen.add(newId);
+            return { ...l, id: newId };
+        });
+
+        return fixed;
     } catch (e) {
-        console.log("[locationsRepo] supabase crashed -> fallback local", e);
+        console.log("[locationsRepo] fallback local", e);
         return localLocations;
     }
 }
