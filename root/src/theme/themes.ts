@@ -1,29 +1,41 @@
-export const lightTheme = {
-    mode: "light" as const,
+export type AppTheme = {
+    mode: "light" | "dark";
     colors: {
-        bg: "#ffffff",
-        text: "#0b0b0b",
-        subtext: "#666",
+        bg: string;
+        card: string;
+        text: string;
+        subtext: string;
+        border: string;
+        primary: string;
+        accent: string;
+        danger: string;
+    };
+};
+
+export const lightTheme: AppTheme = {
+    mode: "light",
+    colors: {
+        bg: "#f3f4f6",
         card: "#ffffff",
-        border: "#e9e9e9",
-        primary: "#111111",
-        accent: "#e11d48",
-        mapOverlay: "rgba(255,255,255,0.9)",
+        text: "#020617",
+        subtext: "#6b7280",
+        border: "#e5e7eb",
+        primary: "#2563eb",
+        accent: "#ef4444",
+        danger: "#b91c1c",
     },
 };
 
-export const darkTheme = {
-    mode: "dark" as const,
+export const darkTheme: AppTheme = {
+    mode: "dark",
     colors: {
-        bg: "#0b0b0b",
-        text: "#ffffff",
-        subtext: "#a1a1aa",
-        card: "#141414",
-        border: "#222",
-        primary: "#ffffff",
+        bg: "#020617",
+        card: "#020617",
+        text: "#f9fafb",
+        subtext: "#9ca3af",
+        border: "#1f2937",
+        primary: "#3b82f6",
         accent: "#fb7185",
-        mapOverlay: "rgba(10,10,10,0.9)",
+        danger: "#f87171",
     },
 };
-
-export type AppTheme = typeof lightTheme;

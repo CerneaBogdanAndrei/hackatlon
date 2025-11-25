@@ -21,7 +21,6 @@ export default function Root() {
     const [initializing, setInitializing] = useState(true);
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
-    // verificăm user-ul curent la pornire
     useEffect(() => {
         let mounted = true;
 
@@ -41,7 +40,6 @@ export default function Root() {
 
         checkUser();
 
-        // ascultăm schimbările de sesiune (login / logout)
         const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
             setIsLoggedIn(!!session?.user);
         });
@@ -52,15 +50,9 @@ export default function Root() {
         };
     }, []);
 
-    // ecran de "loading" cât timp verificăm sesiunea
     if (initializing || isLoggedIn === null) {
         return (
-            <View
-                style={[
-                    styles.center,
-                    { backgroundColor: theme.colors.bg },
-                ]}
-            >
+            <View style={[styles.center, { backgroundColor: theme.colors.bg }]}>
                 <ActivityIndicator size="large" color={theme.colors.text} />
                 <Text style={{ marginTop: 8, color: theme.colors.text }}>
                     se încarcă aplicația...
@@ -73,7 +65,6 @@ export default function Root() {
         <Stack.Navigator>
             {isLoggedIn ? (
                 <>
-                    {/* app-ul principal */}
                     <Stack.Screen
                         name="tabs"
                         component={AppTabs}
@@ -86,7 +77,6 @@ export default function Root() {
                     />
                 </>
             ) : (
-                // stack-ul de autentificare
                 <Stack.Screen
                     name="auth"
                     component={AuthStack}
