@@ -4,7 +4,6 @@ import {
     Text,
     FlatList,
     Pressable,
-    Image,
     ActivityIndicator,
     StyleSheet,
     Dimensions,
@@ -14,8 +13,9 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { getLocations } from "../services/locationsRepo";
+import { getLikedIds, toggleLike } from "../services/likesRepo";
+import LocationCard from "../components/LocationCard";
 
-// ajustează tipul dacă ai altul în locationsRepo
 export type Location = {
     id: number;
     name: string;
@@ -35,27 +35,30 @@ export default function MapScreen() {
 
     const [locations, setLocations] = useState<Location[]>([]);
     const [loading, setLoading] = useState(true);
+    const [likedIds, setLikedIds] = useState<number[]>([]);
     const [selectedId, setSelectedId] = useState<number | null>(null);
 
     useEffect(() => {
         let mounted = true;
-
-        async function load() {
+        (async () => {
             try {
                 setLoading(true);
                 const data = await getLocations();
                 if (mounted) setLocations(data);
-            } catch (e) {
-                console.log("getLocations error:", e);
             } finally {
                 if (mounted) setLoading(false);
             }
-        }
-
-        load();
+        })();
         return () => {
             mounted = false;
         };
+    }, []);
+
+    useEffect(() => {
+        (async () => {
+            const ids = await getLikedIds();
+            setLikedIds(ids);
+        })();
     }, []);
 
     const initialRegion: Region = useMemo(() => {
@@ -68,8 +71,6 @@ export default function MapScreen() {
                 longitudeDelta: 0.25,
             };
         }
-
-        // fallback Romania center
         return {
             latitude: 45.9432,
             longitude: 24.9668,
@@ -83,6 +84,15 @@ export default function MapScreen() {
         navigation.navigate("details", { location: loc });
     }
 
+    async function onToggleLike(loc: Location) {
+        const newLiked = await toggleLike(loc);
+        setLikedIds((prev) =>
+            newLiked
+                ? Array.from(new Set([...prev, loc.id]))
+                : prev.filter((id) => id !== loc.id)
+        );
+    }
+
     if (loading) {
         return (
             <View style={styles.center}>
@@ -94,7 +104,6 @@ export default function MapScreen() {
 
     return (
         <View style={{ flex: 1 }}>
-            {/* MAP */}
             <MapView style={{ height: MAP_H }} initialRegion={initialRegion}>
                 {locations.map((loc) => (
                     <Marker
@@ -107,11 +116,11 @@ export default function MapScreen() {
                 ))}
             </MapView>
 
-            {/* FLOATING AI BUTTON */}
             <Pressable
                 onPress={() =>
-                    navigation.navigate("ai", {
-                        prefill: "recomanda-mi un loc potrivit in orasul meu",
+                    navigation.navigate("tabs", {
+                        screen: "ai",
+                        params: { prefill: "recomanda-mi un loc potrivit in orasul meu" },
                     })
                 }
                 style={styles.aiBtn}
@@ -119,63 +128,25 @@ export default function MapScreen() {
                 <Ionicons name="sparkles" size={24} color="white" />
             </Pressable>
 
-            {/* LIST */}
             <FlatList
                 data={locations}
                 keyExtractor={(item) => String(item.id)}
                 contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
-                renderItem={({ item }) => {
-                    const selected = item.id === selectedId;
-
-                    return (
-                        <Pressable
-                            onPress={() => openDetails(item)}
-                            style={[
-                                styles.card,
-                                selected && { borderColor: "#111", borderWidth: 2 },
-                            ]}
-                        >
-                            {!!item.image_url && (
-                                <Image
-                                    source={{ uri: item.image_url }}
-                                    style={styles.cardImg}
-                                />
-                            )}
-
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.cardTitle}>{item.name}</Text>
-                                <Text style={styles.cardAddr}>{item.address}</Text>
-
-                                {!!item.short_description && (
-                                    <Text style={styles.cardDesc} numberOfLines={2}>
-                                        {item.short_description}
-                                    </Text>
-                                )}
-
-                                {item.rating != null && (
-                                    <Text style={styles.cardRating}>⭐ {item.rating}</Text>
-                                )}
-                            </View>
-                        </Pressable>
-                    );
-                }}
-                ListEmptyComponent={
-                    <Text style={{ textAlign: "center", marginTop: 20 }}>
-                        no locations found
-                    </Text>
-                }
+                renderItem={({ item }) => (
+                    <LocationCard
+                        location={item}
+                        liked={likedIds.includes(item.id)}
+                        onPress={() => openDetails(item)}
+                        onToggleLike={() => onToggleLike(item)}
+                    />
+                )}
             />
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    center: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-
+    center: { flex: 1, justifyContent: "center", alignItems: "center" },
     aiBtn: {
         position: "absolute",
         bottom: 110,
@@ -190,45 +161,5 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 6,
         elevation: 6,
-    },
-
-    card: {
-        flexDirection: "row",
-        gap: 10,
-        backgroundColor: "white",
-        borderRadius: 14,
-        padding: 10,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: "#eee",
-    },
-
-    cardImg: {
-        width: 90,
-        height: 90,
-        borderRadius: 10,
-        backgroundColor: "#f2f2f2",
-    },
-
-    cardTitle: {
-        fontSize: 16,
-        fontWeight: "800",
-    },
-
-    cardAddr: {
-        fontSize: 12,
-        opacity: 0.7,
-        marginTop: 2,
-    },
-
-    cardDesc: {
-        fontSize: 13,
-        marginTop: 6,
-        opacity: 0.9,
-    },
-
-    cardRating: {
-        marginTop: 6,
-        fontWeight: "700",
     },
 });

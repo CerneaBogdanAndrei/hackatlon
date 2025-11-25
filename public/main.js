@@ -1,4 +1,4 @@
-const form = document.getElementById("chat-form");
+ inconst form = document.getElementById("chat-form");
 const input = document.getElementById("message-input");
 const messagesDiv = document.getElementById("messages");
 const submitButton = form.querySelector("button");

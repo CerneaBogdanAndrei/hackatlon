@@ -1,4 +1,6 @@
-// server.js - server Node/Express cu "AI local" peste src/data/locations.json
+// server.js - server Node/Express cu AI local + vibe generator OpenAI
+
+require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
@@ -10,14 +12,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// (opțional) dacă vei avea un frontend separat în /public
 app.use(express.static(path.join(__dirname, "public")));
 
-// Citim baza de date locală cu locații (folosește src/data/locations.json din proiectul tău)
+// ===== Local locations JSON =====
 const locationsPath = path.join(__dirname, "src", "data", "locations.json");
 const locations = JSON.parse(fs.readFileSync(locationsPath, "utf8"));
 
-// ===== Helper functions =====
+// ===== Helper functions (chat local) =====
 
 function normalize(text) {
     return text
@@ -50,7 +51,7 @@ function detectCity(message) {
         oradea: ["oradea"],
         galati: ["galati", "galați"],
         craiova: ["craiova"],
-        ploiesti: ["ploiesti", "ploiești"],
+        ploiesti: ["ploiești", "ploiesti"],
         alba: ["alba iulia", "alba-iulia"],
         tgMures: ["targu mures", "târgu mureș", "targu-mures"],
     };
@@ -74,18 +75,13 @@ function detectTags(message) {
     if (m.includes("peste") || m.includes("fish") || m.includes("seafood")) {
         tags.push("fish");
     }
-    if (
-        m.includes("romantic") ||
-        m.includes("intalnire") ||
-        m.includes("întâlnire") ||
-        m.includes("date")
-    ) {
+    if (m.includes("romantic") || m.includes("date") || m.includes("întâlnire") || m.includes("intalnire")) {
         tags.push("romantic");
     }
-    if (m.includes("student") || m.includes("studenti") || m.includes("facultate")) {
+    if (m.includes("student") || m.includes("facultate") || m.includes("campus")) {
         tags.push("students");
     }
-    if (m.includes("ieftin") || m.includes("low cost") || m.includes("buget")) {
+    if (m.includes("ieftin") || m.includes("buget") || m.includes("low cost")) {
         tags.push("cheap");
     }
 
@@ -98,44 +94,28 @@ function findMatchingLocations(message) {
 
     let filtered = locations.slice();
 
-    // 1. Filtrare după oraș
     if (cityKey) {
         filtered = filtered.filter((loc) => {
             const addr = normalize(loc.address);
             switch (cityKey) {
-                case "bucuresti":
-                    return addr.includes("bucharest") || addr.includes("bucuresti");
-                case "cluj":
-                    return addr.includes("cluj");
-                case "timisoara":
-                    return addr.includes("timisoara");
-                case "iasi":
-                    return addr.includes("iasi");
-                case "brasov":
-                    return addr.includes("brasov");
-                case "sibiu":
-                    return addr.includes("sibiu");
-                case "constanta":
-                    return addr.includes("constanta") || normalize(loc.name).includes("sea");
-                case "oradea":
-                    return addr.includes("oradea");
-                case "galati":
-                    return addr.includes("galati");
-                case "craiova":
-                    return addr.includes("craiova");
-                case "ploiesti":
-                    return addr.includes("ploiesti");
-                case "alba":
-                    return addr.includes("alba iulia");
-                case "tgMures":
-                    return addr.includes("targu mures");
-                default:
-                    return true;
+                case "bucuresti": return addr.includes("bucharest") || addr.includes("bucuresti");
+                case "cluj": return addr.includes("cluj");
+                case "timisoara": return addr.includes("timisoara");
+                case "iasi": return addr.includes("iasi");
+                case "brasov": return addr.includes("brasov");
+                case "sibiu": return addr.includes("sibiu");
+                case "constanta": return addr.includes("constanta") || normalize(loc.name).includes("sea");
+                case "oradea": return addr.includes("oradea");
+                case "galati": return addr.includes("galati");
+                case "craiova": return addr.includes("craiova");
+                case "ploiesti": return addr.includes("ploiesti");
+                case "alba": return addr.includes("alba iulia");
+                case "tgMures": return addr.includes("targu mures");
+                default: return true;
             }
         });
     }
 
-    // 2. Filtrare după taguri
     if (tags.length > 0) {
         filtered = filtered.filter((loc) => {
             const name = normalize(loc.name);
@@ -144,13 +124,7 @@ function findMatchingLocations(message) {
             return tags.every((tag) => {
                 switch (tag) {
                     case "coffee":
-                        return (
-                            name.includes("coffee") ||
-                            name.includes("cafe") ||
-                            desc.includes("espresso") ||
-                            desc.includes("cafea") ||
-                            desc.includes("brunch")
-                        );
+                        return name.includes("coffee") || name.includes("cafe") || desc.includes("espresso") || desc.includes("brunch");
                     case "vegan":
                         return name.includes("vegan") || desc.includes("plant-based");
                     case "pizza":
@@ -158,33 +132,13 @@ function findMatchingLocations(message) {
                     case "burger":
                         return name.includes("burger");
                     case "fish":
-                        return (
-                            name.includes("pesc") ||
-                            name.includes("sea") ||
-                            desc.includes("peste") ||
-                            desc.includes("seafood")
-                        );
+                        return name.includes("pesc") || name.includes("sea") || desc.includes("seafood") || desc.includes("peste");
                     case "romantic":
-                        return (
-                            desc.includes("romantic") ||
-                            desc.includes("terasa") ||
-                            desc.includes("linistit") ||
-                            desc.includes("liniștit")
-                        );
+                        return desc.includes("romantic") || desc.includes("terasa") || desc.includes("linistit");
                     case "students":
-                        return (
-                            desc.includes("student") ||
-                            desc.includes("campus") ||
-                            desc.includes("meniu de pranz") ||
-                            desc.includes("lunch")
-                        );
+                        return desc.includes("student") || desc.includes("campus") || desc.includes("lunch");
                     case "cheap":
-                        return (
-                            desc.includes("ieftin") ||
-                            desc.includes("cheap") ||
-                            desc.includes("menu fix") ||
-                            desc.includes("meniul zilei")
-                        );
+                        return desc.includes("ieftin") || desc.includes("menu fix") || desc.includes("meniul zilei");
                     default:
                         return true;
                 }
@@ -192,14 +146,12 @@ function findMatchingLocations(message) {
         });
     }
 
-    // 3. Fallback dacă nu a rămas nimic dar știm orașul
     if (filtered.length === 0 && cityKey) {
         filtered = locations.filter((loc) =>
             normalize(loc.address).includes(cityKey === "cluj" ? "cluj" : cityKey)
         );
     }
 
-    // sortăm după rating descrescător și luăm max 3
     filtered.sort((a, b) => b.rating - a.rating);
     return filtered.slice(0, 3);
 }
@@ -209,57 +161,18 @@ function buildLongDescription(loc, message) {
     const msg = normalize(message);
 
     const introTemplates = [
-        (l) =>
-            `"${l.name}" este unul dintre cele mai apreciate locuri din ${city}, aflat la adresa ${l.address}.`,
-        (l) =>
-            `Dacă ajungi prin ${city}, merită neapărat să încerci "${l.name}", situat pe ${l.address}.`,
-        (l) =>
-            `"${l.name}", pe ${l.address} (${city}), este o opțiune foarte populară printre localnici și studenți.`,
+        (l) => `"${l.name}" este unul dintre cele mai apreciate locuri din ${city}, aflat la adresa ${l.address}.`,
+        (l) => `Dacă ajungi prin ${city}, merită neapărat să încerci "${l.name}", situat pe ${l.address}.`,
+        (l) => `"${l.name}", pe ${l.address} (${city}), este o opțiune foarte populară printre localnici și studenți.`,
     ];
 
     const atmosphereTemplates = [
         (l) =>
             l.rating >= 4.7
-                ? `Atmosfera este caldă și prietenoasă, iar recenziile îl plasează constant peste ${l.rating.toFixed(
-                    1
-                )} din 5 stele.`
-                : `Este un loc echilibrat, cu recenzii bune și un rating general de aproximativ ${l.rating.toFixed(
-                    1
-                )} din 5.`,
+                ? `Atmosfera e caldă și prietenoasă, iar recenziile îl plasează constant peste ${l.rating.toFixed(1)} din 5 stele.`
+                : `E un loc echilibrat, cu recenzii bune și un rating general de ${l.rating.toFixed(1)} din 5.`,
         (l) =>
-            `Mulți clienți menționează că se simt foarte relaxați aici, iar ratingul de ${l.rating.toFixed(
-                1
-            )} din 5 confirmă experiența plăcută.`,
-    ];
-
-    const usageTemplates = [];
-
-    if (msg.includes("student")) {
-        usageTemplates.push(
-            "Este potrivit în special pentru studenți, fie că vii pentru un prânz rapid între cursuri, fie pentru o seară mai relaxată cu colegii."
-        );
-    } else if (msg.includes("romantic") || msg.includes("intalnire") || msg.includes("întâlnire")) {
-        usageTemplates.push(
-            "Ambianța îl recomandă pentru întâlniri romantice: lumină discretă, muzică plăcută și posibilitatea de a sta la povești în liniște."
-        );
-    } else if (msg.includes("cafea") || msg.includes("cappuccino")) {
-        usageTemplates.push(
-            "Dacă îți place cafeaua bună, aici găsești espresso corect făcut, dar și opțiuni precum cappuccino sau latte pentru un moment de relaxare."
-        );
-    } else if (msg.includes("vegan")) {
-        usageTemplates.push(
-            "Este o alegere foarte bună pentru cei care preferă opțiuni vegane sau mâncare mai ușoară, bazată pe ingrediente proaspete."
-        );
-    } else {
-        usageTemplates.push(
-            "Este genul de loc unde poți veni atât cu prietenii, cât și cu familia, pentru a mânca bine și a petrece timp într-un cadru plăcut."
-        );
-    }
-
-    const extraTemplates = [
-        "Personalul este apreciat ca fiind prietenos și prompt, ceea ce contribuie mult la experiența generală.",
-        "În funcție de oră și de zi, poate fi destul de aglomerat, așa că merită să iei în calcul o rezervare sau să ajungi ceva mai devreme.",
-        "Dacă îți place să faci poze pentru Instagram, decorul și platingul mâncărurilor se pretează foarte bine pentru asta.",
+            `Mulți clienți spun că se simt relaxați aici, iar ratingul de ${l.rating.toFixed(1)} confirmă asta.`,
     ];
 
     const baseDesc = loc.short_description || "";
@@ -267,6 +180,32 @@ function buildLongDescription(loc, message) {
     function pickRandom(arr) {
         return arr[Math.floor(Math.random() * arr.length)];
     }
+
+    const usageTemplates = [];
+
+    if (msg.includes("student")) {
+        usageTemplates.push(
+            "E potrivit pentru studenți: prânz rapid între cursuri sau o seară relaxată cu colegii."
+        );
+    } else if (msg.includes("romantic") || msg.includes("intalnire")) {
+        usageTemplates.push(
+            "Ambianța îl recomandă pentru întâlniri romantice: lumină discretă și vibe liniștit."
+        );
+    } else if (msg.includes("cafea")) {
+        usageTemplates.push(
+            "Dacă îți place cafeaua bună, aici găsești espresso corect făcut și băuturi de specialitate."
+        );
+    } else {
+        usageTemplates.push(
+            "E un loc bun atât pentru prieteni cât și pentru familie, într-un cadru plăcut."
+        );
+    }
+
+    const extraTemplates = [
+        "Personalul e apreciat ca fiind prietenos și prompt.",
+        "Poate fi aglomerat la orele de vârf, deci e bine să ajungi mai devreme.",
+        "Decorul și platingul sunt foarte potrivite pentru poze faine.",
+    ];
 
     const paragraphs = [];
     paragraphs.push(pickRandom(introTemplates)(loc));
@@ -278,17 +217,14 @@ function buildLongDescription(loc, message) {
     return paragraphs.join(" ");
 }
 
-// ===== Endpointul de “chat” local =====
-app.get("/", (req, res) => {
-    res.send("Server local OK. Folosește POST /api/chat");
-});
+// ===== Endpoint “chat” local =====
 app.post("/api/chat", (req, res) => {
     const { message } = req.body;
 
     if (!message || !message.trim()) {
         return res.json({
             reply:
-                "Poți să-mi scrii ce fel de loc cauți. De exemplu: „O cafenea liniștită în Cluj pentru învățat” sau „Un local cu pește la mare”.",
+                "Scrie ce fel de loc cauți. Ex: „cafenea liniștită în Cluj” sau „local cu pește la mare”.",
         });
     }
 
@@ -297,7 +233,7 @@ app.post("/api/chat", (req, res) => {
     if (matches.length === 0) {
         return res.json({
             reply:
-                "Nu am reușit să găsesc un loc potrivit în lista mea pentru ce ai descris. Încearcă să menționezi și orașul sau tipul de local (cafenea, pizza, vegan, pește etc.).",
+                "Nu am găsit ceva potrivit. Încearcă să menționezi orașul sau tipul de local.",
         });
     }
 
@@ -306,8 +242,7 @@ app.post("/api/chat", (req, res) => {
     if (matches.length === 1) {
         reply += buildLongDescription(matches[0], message);
     } else {
-        reply +=
-            "Am găsit mai multe variante care s-ar potrivi cu ce ai întrebat. Iată câteva recomandări:\n\n";
+        reply += "Am găsit câteva variante potrivite:\n\n";
         matches.forEach((loc, idx) => {
             reply += `${idx + 1}. ${buildLongDescription(loc, message)}\n\n`;
         });
@@ -316,8 +251,62 @@ app.post("/api/chat", (req, res) => {
     res.json({ reply });
 });
 
+// ===== Endpoint AI generativ pentru vibe =====
+app.post("/api/vibe", async (req, res) => {
+    try {
+        const { location } = req.body;
+
+        if (!location?.name) {
+            return res.status(400).json({ error: "location missing" });
+        }
+
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (!apiKey) {
+            return res.status(500).json({ error: "OPENAI_API_KEY not set" });
+        }
+
+        const prompt =
+            `Rescrie creativ descrierea pentru această locație, într-un stil “vibe / instagram / prietenos”. ` +
+            `Scrie în română, 2-4 propoziții, fără emoji excesive. ` +
+            `Nume: ${location.name}. ` +
+            `Adresă: ${location.address}. ` +
+            `Rating: ${location.rating ?? "N/A"}. ` +
+            `Descriere scurtă originală: ${location.short_description ?? "N/A"}.`;
+
+        const r = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: "gpt-4o-mini",
+                messages: [
+                    { role: "system", content: "Ești un copywriter creativ pentru localuri." },
+                    { role: "user", content: prompt },
+                ],
+                temperature: 0.8,
+                max_tokens: 180,
+            }),
+        });
+
+        if (!r.ok) {
+            const text = await r.text();
+            return res.status(500).json({ error: text });
+        }
+
+        const json = await r.json();
+        const vibe = json.choices?.[0]?.message?.content?.trim();
+
+        return res.json({ vibe });
+    } catch (e) {
+        console.log("vibe error:", e);
+        return res.status(500).json({ error: "vibe failed" });
+    }
+});
+
 // ===== Pornim serverul =====
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-    console.log(`Server local (fara OpenAI) pornit pe http://localhost:${PORT}`);
+    console.log(`Server pornit pe http://localhost:${PORT}`);
 });
