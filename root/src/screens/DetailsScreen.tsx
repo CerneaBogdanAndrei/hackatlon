@@ -1,10 +1,33 @@
-import { View, Text, Image, ScrollView, StyleSheet, Pressable, ActivityIndicator, Alert } from "react-native";
+import {
+    View,
+    Text,
+    ScrollView,
+    StyleSheet,
+    Pressable,
+    Linking,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
 import { isLiked, toggleLike } from "../services/likesRepo";
 import { useTheme } from "../theme/useTheme";
+
+const WHATSAPP_PHONE = "+40712345678"; // TODO: schimbă cu numărul tău real (format internațional)
+
+/**
+ * Construiește mesajul și linkul de WhatsApp pentru rezervare.
+ */
+function buildWhatsappUrl(location: any) {
+    const text = encodeURIComponent(
+        `Bună! Aș vrea să fac o rezervare la "${location.name}" (adresa: ${location.address}). Aveți o masă liberă în seara asta?`
+    );
+
+    // wa.me acceptă doar cifre, fără +
+    const cleanPhone = WHATSAPP_PHONE.replace(/[^\d]/g, "");
+    return `https://wa.me/${cleanPhone}?text=${text}`;
+}
 
 export default function DetailsScreen({ route }: any) {
     const navigation = useNavigation<any>();
@@ -12,11 +35,6 @@ export default function DetailsScreen({ route }: any) {
     const theme = useTheme();
 
     const [liked, setLiked] = useState(false);
-
-    const [desc, setDesc] = useState<string>(location.short_description || "");
-    const [vibeLoading, setVibeLoading] = useState(false);
-
-    const API_URL = process.env.EXPO_PUBLIC_LOCAL_API_URL; // ex: http://192.168.3.118:3001
 
     useEffect(() => {
         (async () => setLiked(await isLiked(location.id)))();
@@ -27,118 +45,196 @@ export default function DetailsScreen({ route }: any) {
         setLiked(newLiked);
     }
 
-    async function generateVibe() {
-        if (!API_URL) {
-            Alert.alert("error", "EXPO_PUBLIC_LOCAL_API_URL nu e setat");
-            return;
-        }
-
+    async function onReserve() {
         try {
-            setVibeLoading(true);
-
-            const r = await fetch(`${API_URL}/api/vibe`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ location }),
-            });
-
-            if (!r.ok) {
-                const t = await r.text();
-                throw new Error(t);
-            }
-
-            const { vibe } = await r.json();
-            if (vibe) setDesc(vibe);
-        } catch (e: any) {
-            console.log("generate vibe error:", e);
-            Alert.alert("error", "nu am putut genera vibe acum");
-        } finally {
-            setVibeLoading(false);
+            const url = buildWhatsappUrl(location);
+            await Linking.openURL(url);
+        } catch (e) {
+            console.log("whatsapp open error", e);
         }
     }
 
+    function onAiMagic() {
+        const prefill =
+            `Imaginează-ți că sunt client și vreau să înțeleg mai bine locul "${location.name}". ` +
+            `Descriere scurtă: ${location.short_description || "Nu există descriere."} ` +
+            `Adresa: ${location.address}. ` +
+            `Te rog să-mi descrii pe larg atmosfera, ce tip de oameni vin aici, în ce situații s-ar potrivi (învățat, întâlnire romantică, seară cu prietenii) și ce aș putea încerca.`;
+
+        navigation.navigate("tabs", {
+            screen: "ai",
+            params: { prefill },
+        });
+    }
+
     return (
-        <ScrollView contentContainerStyle={{ padding: 12, backgroundColor: theme.colors.bg }}>
+        <ScrollView
+            contentContainerStyle={[
+                styles.container,
+                { backgroundColor: theme.colors.bg },
+            ]}
+        >
+            {/* Poză mare cu animație shared element */}
             {!!location.image_url && (
-                <Image source={{ uri: location.image_url }} style={styles.img} />
+                <Animated.Image
+                    sharedTransitionTag={`loc-img-${location.id}`}
+                    source={{ uri: location.image_url }}
+                    style={styles.img}
+                />
             )}
 
+            {/* Titlu + inimioară + rating */}
             <View style={styles.rowTitle}>
-                <Text style={[styles.title, { color: theme.colors.text }]}>{location.name}</Text>
+                <View style={{ flex: 1 }}>
+                    <Animated.Text
+                        sharedTransitionTag={`loc-title-${location.id}`}
+                        style={[styles.title, { color: theme.colors.text }]}
+                    >
+                        {location.name}
+                    </Animated.Text>
 
-                <Pressable onPress={onToggleLike} hitSlop={10}>
-                    <Ionicons
-                        name={liked ? "heart" : "heart-outline"}
-                        size={26}
-                        color={liked ? theme.colors.accent : theme.colors.text}
-                    />
-                </Pressable>
+                    <Animated.Text
+                        entering={FadeInDown.duration(300)}
+                        style={[styles.addr, { color: theme.colors.subtext }]}
+                    >
+                        {location.address}
+                    </Animated.Text>
+                </View>
+
+                <View style={styles.rightCol}>
+                    {location.rating != null && (
+                        <View style={styles.ratingPill}>
+                            <Ionicons name="star" size={16} color="#facc15" />
+                            <Text style={styles.ratingText}>{location.rating}</Text>
+                        </View>
+                    )}
+
+                    <Pressable onPress={onToggleLike} hitSlop={10}>
+                        <Ionicons
+                            name={liked ? "heart" : "heart-outline"}
+                            size={26}
+                            color={liked ? theme.colors.accent : theme.colors.text}
+                        />
+                    </Pressable>
+                </View>
             </View>
 
-            <Text style={[styles.addr, { color: theme.colors.subtext }]}>{location.address}</Text>
-
-            {!!desc && (
-                <Text style={[styles.desc, { color: theme.colors.text }]}>
-                    {desc}
-                </Text>
+            {/* Descriere inițială */}
+            {!!location.short_description && (
+                <Animated.Text
+                    entering={FadeIn.duration(350)}
+                    style={[styles.desc, { color: theme.colors.text }]}
+                >
+                    {location.short_description}
+                </Animated.Text>
             )}
 
-            {location.rating != null && (
-                <Text style={[styles.rating, { color: theme.colors.text }]}>
-                    ⭐ {location.rating}
-                </Text>
-            )}
-
-            {/* ✨ Buton Vibe */}
-            <Pressable
-                onPress={generateVibe}
-                disabled={vibeLoading}
-                style={[
-                    styles.vibeBtn,
-                    { backgroundColor: theme.colors.primary, opacity: vibeLoading ? 0.6 : 1 },
-                ]}
+            {/* Butoane: Rezervă + AI Magic */}
+            <Animated.View
+                entering={FadeInDown.duration(400)}
+                style={styles.buttonsRow}
             >
-                {vibeLoading ? (
-                    <ActivityIndicator />
-                ) : (
-                    <>
-                        <Ionicons name="sparkles" size={18} color={theme.mode === "dark" ? "#000" : "#fff"} />
-                        <Text style={[styles.vibeBtnText, { color: theme.mode === "dark" ? "#000" : "#fff" }]}>
-                            generează descriere vibe
-                        </Text>
-                    </>
-                )}
-            </Pressable>
+                <Pressable
+                    onPress={onReserve}
+                    style={[
+                        styles.reserveBtn,
+                        { backgroundColor: "#25D366" }, // culoare WhatsApp
+                    ]}
+                >
+                    <Ionicons name="logo-whatsapp" size={18} color="#fff" />
+                    <Text style={styles.reserveText}>rezervă pe WhatsApp</Text>
+                </Pressable>
+
+                <Pressable
+                    onPress={onAiMagic}
+                    style={[
+                        styles.aiBtn,
+                        { borderColor: theme.colors.border, backgroundColor: theme.colors.card },
+                    ]}
+                >
+                    <Ionicons
+                        name="sparkles"
+                        size={18}
+                        color={theme.colors.text}
+                    />
+                    <Text style={[styles.aiText, { color: theme.colors.text }]}>
+                        ai magic
+                    </Text>
+                </Pressable>
+            </Animated.View>
         </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
+    container: { padding: 12 },
     img: {
         width: "100%",
-        height: 240,
-        borderRadius: 14,
+        height: 260,
+        borderRadius: 16,
         backgroundColor: "#222",
-        marginBottom: 12,
+        marginBottom: 14,
     },
     rowTitle: {
         flexDirection: "row",
+        alignItems: "flex-start",
         justifyContent: "space-between",
-        alignItems: "center",
-        gap: 8,
+        gap: 10,
+        marginBottom: 8,
     },
-    title: { fontSize: 22, fontWeight: "800", flex: 1 },
-    addr: { marginTop: 4, opacity: 0.9 },
-    desc: { marginTop: 10, fontSize: 16, lineHeight: 22 },
-    rating: { marginTop: 10, fontWeight: "800" },
-    vibeBtn: {
-        marginTop: 16,
-        paddingVertical: 10,
-        borderRadius: 10,
+    rightCol: {
+        alignItems: "flex-end",
+        gap: 6,
+    },
+    title: { fontSize: 22, fontWeight: "800" },
+    addr: { marginTop: 2, fontSize: 13 },
+    desc: { marginTop: 12, fontSize: 15, lineHeight: 22 },
+
+    ratingPill: {
         flexDirection: "row",
-        gap: 8,
+        alignItems: "center",
+        gap: 4,
+        backgroundColor: "#1f2937",
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 999,
+    },
+    ratingText: { color: "#fefce8", fontWeight: "700", fontSize: 13 },
+
+    buttonsRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        marginTop: 18,
+    },
+    reserveBtn: {
+        flex: 1.3,
+        flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
+        gap: 8,
+        paddingVertical: 10,
+        borderRadius: 999,
     },
-    vibeBtnText: { fontWeight: "800" },
+    reserveText: {
+        color: "#fff",
+        fontWeight: "700",
+        fontSize: 14,
+    },
+    aiBtn: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        paddingVertical: 10,
+        borderRadius: 999,
+        borderWidth: 1,
+    },
+    aiText: {
+        fontWeight: "700",
+        fontSize: 13,
+        textTransform: "uppercase",
+        letterSpacing: 0.4,
+    },
 });

@@ -20,6 +20,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "expo": "^54.0.25",
+    "expo-dev-client": "~6.0.18",
     "express": "^4.21.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
